@@ -1,0 +1,15 @@
+[
+    {
+        "id": "cursor",
+        "name": "鼠标指针",
+        "i18n": {"Chinese":"鼠标指针"},
+        "url": "https://www.pixiv.net/en/artworks/111622474"
+    },
+    {
+        "id": "background",
+        "name": "背景",
+        "i18n": {"Chinese":"背景美术"},
+        "comment": "(原贴已被删除)",
+        "url": "https://x.com/hisehisekin/"
+    }
+]
