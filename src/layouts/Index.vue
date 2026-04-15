@@ -3,7 +3,7 @@
         <header>
             <h1 class="_target">Lorem Ipsum Dolor</h1>
             <p>
-                THIS PAGE IS CURRENTLY NOT FOR MOBILE BROWSERS!
+                Lorem ipsum, dolor sit amet consectetur adipisicing elit. Culpa, asperiores minima autem accusantium esse quasi. Tenetur alias voluptatibus rem sequi aliquam unde fugiat repellendus hic.
             </p>
         </header>
 
@@ -86,6 +86,7 @@
 <style scoped>
 * {
     width: fit-content;
+    border: 1px #88888833 solid;
 }
 main {
     padding: 3rem;

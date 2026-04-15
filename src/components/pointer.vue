@@ -1,6 +1,6 @@
 <template>
   <div class="cursor-container">
-    <div class="cursor" :class="{ 'hidden': isFocusing }" id="CUSTOM_CURSOR_CUR_POINTER">
+    <div class="cursor" id="CUSTOM_CURSOR_CUR_POINTER">
     </div>
     <div class="cursor-focus" id="CUSTOM_CURSOR_CUR_FOCUSING">
     </div>
@@ -8,15 +8,16 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, onMounted, onUnmounted, ref } from 'vue';
+import { reactive, onMounted, onUnmounted, ref, computed } from 'vue';
 import { animate } from 'animejs';
+
+import CURSOR_IMAGE_URL from '../assets/cursor_pointer.webp';
+import CURSOR_LINK_IMAGE_URL from '../assets/cursor_link.webp';
+import CURSOR_FOCUS_IMAGE_URL from '../assets/cursor_focus4x.webp';
 
 //config area
 
 const transitionTime = 250
-
-const CURSOR_IMAGE_URL = '/pointer_9A239EB457D5E7AF6357366BD62047CB.webp';
-const CURSOR_FOCUS_IMAGE_URL = '/focus4x_5AA2020B9F0D94AD3DF67F0D2AB801A7.webp';
 
 const ORIGINAL_HOTSPOT = { x: 1, y: 1 };
 const BASE_SIZE = 32;
@@ -33,13 +34,15 @@ const currentHotspot = {
   y: ORIGINAL_HOTSPOT.y * SCALE_MULTIPLIER
 };
 
-const CURSOR_IMAGE_ATTR = `url(${CURSOR_IMAGE_URL})`;
 const CURSOR_SIZE_ATTR = `${finalSize}px`;
 const FOCUS_IMAGE_ATTR = `url(${CURSOR_FOCUS_IMAGE_URL})`;
 const FOCUS_SIZE_ATTR = `${finalFocusSize}px`;
 
 const isFocusing = ref(false)
 const position = reactive({ x: 3276800, y: 3276800 });
+const cursorImageUrl = computed(() => { return `url(${isFocusing.value ? CURSOR_LINK_IMAGE_URL : CURSOR_IMAGE_URL})` })
+
+const AbController = new AbortController()
 
 
 
@@ -61,20 +64,27 @@ const bindTargetEvents = () => {
     console.debug(`Binding to ${ele}`)
 
     ele.addEventListener('mouseenter', (e) => {
-      console.debug("->", ele)
+      //console.debug("->", ele)
+
       currentTarget.value = ele;
       isFocusing.value = true;
+
       e.stopPropagation();
+
       playTransitionAnimation(true);
-    });
+    }, { signal: AbController.signal });
 
     ele.addEventListener('mouseleave', (e) => {
-      console.debug(`<-`, currentTarget.value)
+      //console.debug(`<-`, currentTarget.value)
+
       currentTarget.value = null;
       isFocusing.value = false;
+
       e.stopPropagation();
+
       playTransitionAnimation(false);
-    });
+    }, { signal: AbController.signal });
+
     console.debug(`Binding ok!`, ele)
   });
 };
@@ -91,16 +101,19 @@ const getAnimationArgs = () => {
   let targetW = -1;
 
   if (isFocusing.value && currentTarget.value) {
+
     const rect = currentTarget.value.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
 
-    targetXF = rect.left + (position.x - centerX) * 0.1 - BASE_RENDER_SIZE_FOCUS; //snap effect
-    targetYF = rect.top + (position.y - centerY) * 0.1 - BASE_RENDER_SIZE_FOCUS;
+    targetXF = rect.left + (position.x - centerX) * 0.1 - BASE_RENDER_SIZE_FOCUS * SCALE_MULTIPLIER; //snap effect
+    targetYF = rect.top + (position.y - centerY) * 0.1 - BASE_RENDER_SIZE_FOCUS * SCALE_MULTIPLIER;
+
     usingFocus = true;
     targetH = rect.height;
     targetW = rect.width;
-    Object.assign(lastFocusing, { cx: centerX, cy: centerY, w: targetW, h: targetH, x:targetXF, y:targetYF})
+
+    Object.assign(lastFocusing, { cx: centerX, cy: centerY, w: targetW, h: targetH, x: targetXF, y: targetYF })
   }
 
   return {
@@ -116,17 +129,24 @@ const playTransitionAnimation = (enter: boolean = true, instant: boolean = false
   const { targetX, targetY, usingFocus, targetXF, targetYF, targetH, targetW } = getAnimationArgs();
 
   animate("#CUSTOM_CURSOR_CUR_FOCUSING", {
-    translateX: { from: usingFocus ? targetX:lastFocusing.x, to: usingFocus ? targetXF : targetX - lastFocusing.w / 2 },
-    translateY: { from: usingFocus ? targetY:lastFocusing.y, to: usingFocus ? targetYF : targetY - lastFocusing.h / 2 },
+    translateX: { from: usingFocus ? targetX : lastFocusing.x, to: usingFocus ? targetXF : targetX - lastFocusing.w / 2 },
+    translateY: { from: usingFocus ? targetY : lastFocusing.y, to: usingFocus ? targetYF : targetY - lastFocusing.h / 2 },
+
     opacity: enter ? 1 : 0,
     scale: enter ? 1 : 0,
+
     duration: instant ? 0 : transitionTime,
+    ease: enter ? "outExpo" : 'inExpo',
+
     width: { to: usingFocus ? targetW : lastFocusing.w, duration: 0 },
     height: { to: usingFocus ? targetH : lastFocusing.h, duration: 0 },
   })
+
   animate("#CUSTOM_CURSOR_CUR_POINTER", {
-    opacity: enter ? 0 : 1,
-    duration: instant ? 0 : transitionTime
+    opacity: enter ? 0.2 : 1,
+
+    ease: enter ? "outExpo" : 'inCirc',
+    duration: instant ? 0 : transitionTime * 0.6,
   })
 }
 
@@ -148,21 +168,30 @@ const handleMouseMove = (e: MouseEvent) => {
 
 };
 
+const hideCursor = () => {
+  animate("#CUSTOM_CURSOR_CUR_POINTER", { translateX: 3276800, translateY: 3276800, duration: 0 })
+}
+
 onMounted(() => {
-  window.addEventListener('mousemove', handleMouseMove);
-  bindTargetEvents();
   console.log(`Cursor Scale: ${SCALE_MULTIPLIER}x, Size: ${finalSize}px`);
-  playTransitionAnimation(false, true)
+
+  window.addEventListener('mousemove', handleMouseMove, { signal: AbController.signal });
+  window.addEventListener("touchstart", hideCursor, { signal: AbController.signal });
+  bindTargetEvents();
+
+  hideCursor();
+  playTransitionAnimation(false, true);
 });
 
 onUnmounted(() => {
-  window.removeEventListener('mousemove', handleMouseMove);
-
-  location.reload();//debug
+  try { AbController.abort(); }
+  catch { location.reload(); }
 });
 
 (window as any).setCursorSize = (size: string) => {
+
   const numSize = parseFloat(size);
+
   if (isNaN(numSize) || numSize <= 0) {
     console.warn('setCursorSize: Invalid cursor size.');
     return;
@@ -194,7 +223,7 @@ onUnmounted(() => {
   top: 0;
   left: 0;
 
-  background-image: v-bind(CURSOR_IMAGE_ATTR);
+  background-image: v-bind(cursorImageUrl);
   width: v-bind(CURSOR_SIZE_ATTR);
   height: v-bind(CURSOR_SIZE_ATTR);
 
@@ -223,9 +252,5 @@ onUnmounted(() => {
   z-index: 19999;
 
   will-change: transform, opacity;
-}
-
-.hidden {
-  opacity: 0;
 }
 </style>
