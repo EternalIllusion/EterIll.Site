@@ -7,10 +7,12 @@ import legacy from '@vitejs/plugin-legacy'
 export default defineConfig({
   build: {
     assetsInlineLimit: 5 * 1024,
+    rollupOptions: {
+      external: ['abortcontroller-polyfill/dist/polyfill-patch-fetch'],
+    },
   },
   plugins: [vue(),
   legacy({
     targets: ['defaults', 'fully supports es6'],
-    additionalLegacyPolyfills: ['abortcontroller-polyfill/dist/polyfill-patch-fetch']
   })],
 })
