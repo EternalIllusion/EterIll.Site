@@ -216,6 +216,8 @@ onUnmounted(() => {
   left: 0;
   right: 0;
 
+  z-index: 19999;
+
 }
 
 .cursor {

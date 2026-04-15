@@ -2,3 +2,7 @@
   color-scheme: light dark;
   /* to prevent xray effect when preferred dark theme */
 }
+
+body {
+  margin: 0;
+}
