@@ -65,6 +65,10 @@ onUnmounted(() => {
         z-index: 20001;
     }
 
+    ._bg_front {
+        filter: drop-shadow(0 0 1px #000);
+    }
+
     ._bg_abs_bg {
         max-width: 100vw;
         width: 100%;

@@ -17,12 +17,15 @@ import CURSOR_FOCUS_IMAGE_URL from '../assets/cursor_focus4x.webp';
 
 //config area
 
-const transitionTime = 250
+const transitionTime = 250;
+const transitionDelay = 100;
 
 const ORIGINAL_HOTSPOT = { x: 1, y: 1 };
 const BASE_SIZE = 32;
 const BASE_SIZE_FOCUS = 128; // 384/3=128
 const BASE_RENDER_SIZE_FOCUS = 32;
+const FOCUS_RENDER_SIZE_OFFSET = -12;
+const FOCUS_SNAP_FRAC = 0.15;
 
 const scaleStr = localStorage.getItem('cursor-scale');
 const SCALE_MULTIPLIER = scaleStr ? parseFloat(scaleStr) : 1;
@@ -50,7 +53,7 @@ const AbController = new AbortController()
 
 
 const currentTarget = ref<HTMLElement | null>(null);
-const lastFocusing = reactive({ x: 3276800, y: 3276800, cx: 3276800, cy: 3276800, w: 0, h: 0 })
+const lastFocusing = reactive({ x: 3276800, y: 3276800, cx: 3276800, cy: 3276800, w: 0, h: 0, t: 0 })
 
 const getTargets = (): NodeListOf<HTMLElement> => {
   return document.querySelectorAll('._target');
@@ -106,31 +109,35 @@ const getAnimationArgs = () => {
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
 
-    targetXF = rect.left + (position.x - centerX) * 0.1 - BASE_RENDER_SIZE_FOCUS * SCALE_MULTIPLIER; //snap effect
-    targetYF = rect.top + (position.y - centerY) * 0.1 - BASE_RENDER_SIZE_FOCUS * SCALE_MULTIPLIER;
+    targetXF = rect.left + (position.x - centerX) * FOCUS_SNAP_FRAC - BASE_RENDER_SIZE_FOCUS * SCALE_MULTIPLIER - FOCUS_RENDER_SIZE_OFFSET; //snap effect
+    targetYF = rect.top + (position.y - centerY) * FOCUS_SNAP_FRAC - BASE_RENDER_SIZE_FOCUS * SCALE_MULTIPLIER - FOCUS_RENDER_SIZE_OFFSET;
 
     usingFocus = true;
-    targetH = rect.height;
-    targetW = rect.width;
-
-    Object.assign(lastFocusing, { cx: centerX, cy: centerY, w: targetW, h: targetH, x: targetXF, y: targetYF })
+    targetH = rect.height + 2 * FOCUS_RENDER_SIZE_OFFSET;
+    targetW = rect.width + 2 * FOCUS_RENDER_SIZE_OFFSET;
   }
 
   return {
     targetX, targetY,
     usingFocus,
     targetXF, targetYF,
-    targetH, targetW
+    targetH, targetW,
   }
 }
 
 const playTransitionAnimation = (enter: boolean = true, instant: boolean = false) => {
 
   const { targetX, targetY, usingFocus, targetXF, targetYF, targetH, targetW } = getAnimationArgs();
+  let notPendingTransition = true;
+
+  if (usingFocus) {
+    notPendingTransition = ((Date.now() - lastFocusing.t) > transitionTime * 2);
+    notPendingTransition = notPendingTransition || lastFocusing.x === -1 || lastFocusing.y === -1;
+  }
 
   animate("#CUSTOM_CURSOR_CUR_FOCUSING", {
-    translateX: { from: usingFocus ? targetX : lastFocusing.x, to: usingFocus ? targetXF : targetX - lastFocusing.w / 2 },
-    translateY: { from: usingFocus ? targetY : lastFocusing.y, to: usingFocus ? targetYF : targetY - lastFocusing.h / 2 },
+    translateX: { from: notPendingTransition ? (enter?targetXF:undefined) : lastFocusing.x, to: usingFocus ? targetXF : targetX - lastFocusing.w / 2 },
+    translateY: { from: notPendingTransition ? (enter?targetYF:undefined) : lastFocusing.y, to: usingFocus ? targetYF : targetY - lastFocusing.h / 2 },
 
     opacity: enter ? 1 : 0,
     scale: enter ? 1 : 0,
@@ -148,6 +155,12 @@ const playTransitionAnimation = (enter: boolean = true, instant: boolean = false
     ease: enter ? "outExpo" : 'inCirc',
     duration: instant ? 0 : transitionTime * 0.6,
   })
+
+  if(usingFocus) {
+    Object.assign(lastFocusing, { cx: targetXF + targetW / 2, cy: targetYF + targetH / 2, w: targetW, h: targetH, x: targetXF, y: targetYF, t: Date.now()});
+  }else{
+    lastFocusing.t = Date.now();
+  }
 }
 
 
@@ -161,11 +174,10 @@ const handleMouseMove = (e: MouseEvent) => {
     animate("#CUSTOM_CURSOR_CUR_FOCUSING", {
       translateX: targetXF, translateY: targetYF,
       width: targetW, height: targetH,
-      duration: 0
+      duration: transitionDelay
     })
   }
   animate("#CUSTOM_CURSOR_CUR_POINTER", { translateX: targetX, translateY: targetY, duration: 0 })
-
 };
 
 const hideCursor = () => {

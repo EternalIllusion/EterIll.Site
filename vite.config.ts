@@ -9,6 +9,13 @@ export default defineConfig({
     assetsInlineLimit: 5 * 1024,
     rollupOptions: {
       external: ['abortcontroller-polyfill/dist/polyfill-patch-fetch'],
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            return 'vendor';
+          }
+        }
+      }
     },
   },
   plugins: [vue(),
